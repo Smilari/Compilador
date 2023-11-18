@@ -225,11 +225,6 @@ public class AnalizadorSintactico {
                     aLexico.escanear();
                     proposicion(base, desplazamiento);
                 }
-                if(aLexico.compararTerminal(HALT)){
-                    gCodigo.cargarByte(JMP_OPCODE);
-                    gCodigo.cargarEntero(0x588 - (gCodigo.getTopeMemoria() + 4)); //Fin del programa
-                    aLexico.escanear();
-                }
 
                 verificarTerminal(END, 203);
                 aLexico.escanear();
@@ -347,6 +342,13 @@ public class AnalizadorSintactico {
                     gCodigo.cargarByte(CALL_OPCODE);
                     gCodigo.cargarEntero(distancia);
                 }
+
+                break;
+
+            case HALT:
+                aLexico.escanear();
+                gCodigo.cargarByte(JMP_OPCODE);
+                gCodigo.cargarEntero(0x588 - (gCodigo.getTopeMemoria() + 4)); //Fin del programa
 
                 break;
         }
