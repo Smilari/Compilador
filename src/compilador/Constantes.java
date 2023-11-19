@@ -38,4 +38,6 @@ public class Constantes {
     public static int PUSH_EAX_OPCODE = 0x50;
     public static int MOV_EAX_VAR_OPCODE = 0x8B; //MOV EAX, [EDI + ...]
     public static int MOV_EAX_CONST_OPCODE = 0xB8; // MOV EAX, ...
+    public static int MOV_EBX_CONST_OPCODE = 0xBB; // MOV EBX, ...
+    public static int PUSH_EBX_OPCODE = 0x53; // PUSH EBX
 }

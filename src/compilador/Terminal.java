@@ -1,6 +1,7 @@
 package compilador;
 
 public enum Terminal {
+        TO,
         FOR,
         IF,
         CALL,
