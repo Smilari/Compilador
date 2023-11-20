@@ -6,7 +6,6 @@ import static compilador.Terminal.*;
 import static compilador.Constantes.*;
 import static compilador.EntradaSalida.*;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +27,10 @@ public class AnalizadorSintactico {
         contVariables = 0;
     }
 
+
+    public void mostrarInstruccion(int pos){
+        escribirConSalto("\n[" + pos + "] Instruccion: " + Integer.toHexString(gCodigo.descargarByteVon(pos)));
+    }
 
     /* METODOS */
     public void programa() {
@@ -190,7 +193,7 @@ public class AnalizadorSintactico {
                 aLexico.escanear();
 
                 expresion(base, desplazamiento);
-                gCodigo.cargarPOP();
+                gCodigo.cargarPOP_EAX();
                 gCodigo.cargarByte(MOV_VAR_EAX_OPCODE);
                 gCodigo.cargarByte(MOV_VAR_EAX_OPCODE2);
                 gCodigo.cargarEntero(resultadoBean.getValor());
@@ -265,120 +268,90 @@ public class AnalizadorSintactico {
 
             case FOR:
                 aLexico.escanear();
+
                 verificarTerminal(IDENTIFICADOR, 212);
-                String variableControl = aLexico.getCadena();
-                int result = aSemantico.buscarIdentificador(base + desplazamiento - 1, 0, variableControl);
-
-                if (result == -1 || aSemantico.buscarInfo(result).getTipo() != VAR) {
-                    indicaErrores.mostrarError(502, aLexico.getTerminal(), variableControl);
-                }
-                aLexico.escanear();
-
-                verificarTerminal(ASIGNACION, 213);
-                aLexico.escanear();
-                expresion(base, desplazamiento);
-                gCodigo.cargarPOP();
-                gCodigo.cargarByte(MOV_VAR_EAX_OPCODE);
-                gCodigo.cargarByte(MOV_VAR_EAX_OPCODE2);
-                gCodigo.cargarEntero(aSemantico.buscarInfo(result).getValor());
-
-                verificarTerminal(TO, 214);
-                aLexico.escanear();
-                expresion(base, desplazamiento);
-
-                // Increment the loop variable
-                gCodigo.cargarPOP();
-                gCodigo.cargarByte(MOV_EBX_CONST_OPCODE);
-                gCodigo.cargarEntero(1);
-                gCodigo.cargarByte(ADD_OPCODE);
-                gCodigo.cargarByte(ADD_OPCODE2);
-                gCodigo.cargarByte(PUSH_EBX_OPCODE);
-
-                // Compare loop variable with the specified value
-                gCodigo.cargarPOP();
-                gCodigo.cargarByte(MOV_VAR_EAX_OPCODE);
-                gCodigo.cargarByte(MOV_VAR_EAX_OPCODE2);
-                gCodigo.cargarEntero(aSemantico.buscarInfo(result).getValor());
-                gCodigo.cargarByte(CMP_OPCODE);
-                gCodigo.cargarByte(CMP_OPCODE2);
-
-                // Jump to the end of the loop if the condition is not met
-                int startOfLoop = gCodigo.getTopeMemoria();
-                gCodigo.cargarByte(JG_OPCODE);
-                gCodigo.cargarEntero(0x00); // Placeholder for the jump distance
-
-                verificarTerminal(DO, 213);
-                aLexico.escanear();
-                proposicion(base, desplazamiento);
-
-                // Jump back to the start of the loop
-                int endOfLoop = gCodigo.getTopeMemoria();
-                int loopDistance = endOfLoop - startOfLoop;
-                gCodigo.cargarByte(JMP_OPCODE);
-                gCodigo.cargarEntero(-loopDistance);
-
-                // Fix up the jump distance
-                int jumpDistance = endOfLoop - (startOfLoop + 7);
-                gCodigo.cargarEnteroEn(jumpDistance, startOfLoop + 3);
-
-                break;
-           /* case FOR:
-                aLexico.escanear();
-                verificarTerminal(IDENTIFICADOR, 212);
-
                 String variableControl = aLexico.getCadena();
                 resultadoBusqueda = aSemantico.buscarIdentificador(base + desplazamiento - 1, 0, variableControl);
 
-                if (resultadoBusqueda == -1 || aSemantico.buscarInfo(resultadoBusqueda).getTipo() != VAR) {
+                if (resultadoBusqueda == -1) {
                     indicaErrores.mostrarError(502, aLexico.getTerminal(), aLexico.getCadena());
                 }
+
+                resultadoBean = aSemantico.buscarInfo(resultadoBusqueda);
+                if (resultadoBean.getTipo() != VAR) {
+                    indicaErrores.mostrarError(503, resultadoBean.getTipo(), aLexico.getCadena());
+                }
+
                 aLexico.escanear();
 
                 verificarTerminal(ASIGNACION, 213);
                 aLexico.escanear();
 
                 expresion(base, desplazamiento);
-                gCodigo.cargarPOP();
+                gCodigo.cargarPOP_EAX();
+
+                // Almacena el valor obtenido de la expresión en la variable de control del bucle
+                int posVarControl = resultadoBean.getValor(); // Posición de la variable de control (contador)
                 gCodigo.cargarByte(MOV_VAR_EAX_OPCODE);
                 gCodigo.cargarByte(MOV_VAR_EAX_OPCODE2);
-                gCodigo.cargarEntero(aSemantico.buscarInfo(resultadoBusqueda).getValor());
-                escribirConSalto("VALOR: " + aSemantico.buscarInfo(resultadoBusqueda).getValor());
-                new java.util.Scanner(System.in).nextLine();
+                gCodigo.cargarEntero(posVarControl);
 
                 verificarTerminal(TO, 214);
                 aLexico.escanear();
 
-                int posLimiteSuperior = gCodigo.getTopeMemoria();
-
                 expresion(base, desplazamiento);
+                inicioCondicion = gCodigo.getTopeMemoria(); // Inicio for
 
-                // Almacenar el valor de la expresión en la posición de memoria obtenida
-                gCodigo.cargarPOP();
-                gCodigo.cargarByte(MOV_VAR_EAX_OPCODE);
-                gCodigo.cargarByte(MOV_VAR_EAX_OPCODE2);
-                gCodigo.cargarEntero(posLimiteSuperior);
+                // Carga el valor actual de la variable de control para comparación
+                gCodigo.cargarByte(MOV_EAX_VAR_OPCODE);
+                gCodigo.cargarEntero(posVarControl);
 
-                int inicioBucleFor = gCodigo.getTopeMemoria();
+                // Compara la variable de control con el valor final (Intercambia sus valores para que la variable de control quede en EBX)
+                gCodigo.cargarByte(POP_EBX_OPCODE);
+                gCodigo.cargarByte(XCHG_OPCODE);
+                gCodigo.cargarByte(CMP_OPCODE);
+                gCodigo.cargarByte(CMP_OPCODE2);
+                gCodigo.cargarByte(PUSH_EAX_OPCODE); // Vuelve a pushear EAX (EBX anteriormente) para conservar el valor de la variable final
 
+                // Si la condición es falsa, salta al final del bucle
+                gCodigo.cargarByte(JG_OPCODE);
+                gCodigo.cargarByte(0x00); // Distancia que se llenará más adelante
+
+                int saltoACorregir = gCodigo.getTopeMemoria();
+
+                // Espera la palabra clave DO
                 verificarTerminal(DO, 215);
                 aLexico.escanear();
 
+                // Realiza las operaciones dentro del bucle
                 proposicion(base, desplazamiento);
 
-                // Incrementar la variable de control y volver al inicio del bucle
-                gCodigo.cargarByte(POP_EAX_OPCODE);
+                // Incrementa la variable de control en '1'
+                gCodigo.cargarByte(MOV_EAX_OPCODE);
+                gCodigo.cargarEntero(1);
+                gCodigo.cargarByte(PUSH_EAX_OPCODE);
                 gCodigo.cargarByte(POP_EBX_OPCODE);
+                gCodigo.cargarByte(MOV_EAX_VAR_OPCODE);
+                gCodigo.cargarEntero(posVarControl);
                 gCodigo.cargarByte(ADD_OPCODE);
                 gCodigo.cargarByte(ADD_OPCODE2);
                 gCodigo.cargarByte(MOV_VAR_EAX_OPCODE);
                 gCodigo.cargarByte(MOV_VAR_EAX_OPCODE2);
-                gCodigo.cargarEntero(aSemantico.buscarInfo(resultadoBusqueda).getValor());
+                gCodigo.cargarEntero(posVarControl);
 
+                // Salta de nuevo al inicio del bucle
+                origen = gCodigo.getTopeMemoria() + 5;
+                destino = inicioCondicion;
+                distancia = destino - origen;
                 gCodigo.cargarByte(JMP_OPCODE);
-                distancia = inicioBucleFor - gCodigo.getTopeMemoria() - 5;
                 gCodigo.cargarEntero(distancia);
 
-                break;*/
+                // Corrige el salto condicional al final del bucle
+                destinoSalto = gCodigo.getTopeMemoria();
+                distanciaSalto = destinoSalto - saltoACorregir;
+                gCodigo.cargarEnteroEn(distanciaSalto, saltoACorregir - 4); // Fix Up
+
+                break;
 
             case READLN:
                 aLexico.escanear();
@@ -390,9 +363,15 @@ public class AnalizadorSintactico {
                     nombreDelIdent = aLexico.getCadena();
                     resultadoBusqueda = aSemantico.buscarIdentificador(base + desplazamiento - 1, base, nombreDelIdent);
 
-                    if (resultadoBusqueda == -1 || aSemantico.buscarInfo(resultadoBusqueda).getTipo() != VAR) {
+                    if (resultadoBusqueda == -1) {
                         indicaErrores.mostrarError(502, null, aLexico.getCadena());
                     }
+
+                    resultadoBean = aSemantico.buscarInfo(resultadoBusqueda);
+                    if (resultadoBean.getTipo() != VAR) {
+                        indicaErrores.mostrarError(503, resultadoBean.getTipo(), aLexico.getCadena());
+                    }
+
                     aLexico.escanear();
 
                     origen = gCodigo.getTopeMemoria() + 5;
@@ -400,7 +379,7 @@ public class AnalizadorSintactico {
                     gCodigo.cargarByte(CALL_OPCODE);
                     gCodigo.cargarEntero(destino - origen);
                     gCodigo.cargarByte(MOV_VAR_EAX_OPCODE);
-                    gCodigo.cargarByte(0x87);
+                    gCodigo.cargarByte(MOV_VAR_EAX_OPCODE2);
                     gCodigo.cargarEntero(aSemantico.buscarInfo(resultadoBusqueda).getValor());
                 } while (aLexico.compararTerminal(COMA));
 
@@ -415,7 +394,7 @@ public class AnalizadorSintactico {
                         aLexico.escanear();
                         if (aLexico.compararTerminal(CADENA_LITERAL)) {
                             int ubCad = gCodigo.getUbicacionCadena();
-                            gCodigo.cargarByte(MOV_EAX_CONST_OPCODE);
+                            gCodigo.cargarByte(MOV_EAX_OPCODE);
                             gCodigo.cargarEntero(ubCad);
                             origen = gCodigo.getTopeMemoria() + 5;
                             destino = 0x3E0;
@@ -433,7 +412,7 @@ public class AnalizadorSintactico {
                             aLexico.escanear();
                         } else {
                             expresion(base, desplazamiento);
-                            gCodigo.cargarPOP();
+                            gCodigo.cargarPOP_EAX();
                             origen = gCodigo.getTopeMemoria() + 5;
                             destino = 0x420;
                             distancia = destino - origen;
@@ -491,7 +470,7 @@ public class AnalizadorSintactico {
         } else if (aLexico.compararTerminal(ODD)) {
             aLexico.escanear();
             expresion(base, desplazamiento);
-            gCodigo.cargarPOP();
+            gCodigo.cargarPOP_EAX();
             gCodigo.cargarByte(0xA8); // TEST AL, 01
             gCodigo.cargarByte(0x01);
             gCodigo.cargarByte(JPO_OPCODE);
@@ -507,7 +486,7 @@ public class AnalizadorSintactico {
             aLexico.escanear();
             expresion(base, desplazamiento);
 
-            gCodigo.cargarPOP();
+            gCodigo.cargarPOP_EAX();
             gCodigo.cargarByte(POP_EBX_OPCODE);
             gCodigo.cargarByte(CMP_OPCODE);
             gCodigo.cargarByte(CMP_OPCODE2);
@@ -537,7 +516,7 @@ public class AnalizadorSintactico {
 
         termino(base, desplazamiento);
         if (simbolo == MENOS) {
-            gCodigo.cargarPOP();
+            gCodigo.cargarPOP_EAX();
             gCodigo.cargarByte(NEG_OPCODE);
             gCodigo.cargarByte(NEG_OPCODE2);
             gCodigo.cargarByte(PUSH_EAX_OPCODE);
@@ -546,7 +525,7 @@ public class AnalizadorSintactico {
             simbolo = aLexico.getTerminal();
             aLexico.escanear();
             termino(base, desplazamiento);
-            gCodigo.cargarPOP();
+            gCodigo.cargarPOP_EAX();
             gCodigo.cargarByte(POP_EBX_OPCODE);
             switch (simbolo) {
                 case MAS:
@@ -569,7 +548,7 @@ public class AnalizadorSintactico {
             Terminal operador = aLexico.getTerminal();
             aLexico.escanear();
             factor(base, desplazamiento);
-            gCodigo.cargarPOP();
+            gCodigo.cargarPOP_EAX();
             gCodigo.cargarByte(POP_EBX_OPCODE);
 
             if (operador == POR) {
@@ -606,7 +585,7 @@ public class AnalizadorSintactico {
                         indicaErrores.mostrarError(505, resultadoBusBean.getTipo(), aLexico.getCadena());
                         break;
                     case CONST:
-                        gCodigo.cargarByte(MOV_EAX_CONST_OPCODE);
+                        gCodigo.cargarByte(MOV_EAX_OPCODE);
                         gCodigo.cargarEntero(resultadoBusBean.getValor()); // Numero
                         gCodigo.cargarByte(PUSH_EAX_OPCODE);
                         break;
@@ -620,7 +599,7 @@ public class AnalizadorSintactico {
                 break;
 
             case NUMERO:
-                gCodigo.cargarByte(MOV_EAX_CONST_OPCODE);
+                gCodigo.cargarByte(MOV_EAX_OPCODE);
                 gCodigo.cargarEntero(Integer.parseInt(aLexico.getCadena())); // Numero
                 gCodigo.cargarByte(PUSH_EAX_OPCODE);
                 aLexico.escanear();

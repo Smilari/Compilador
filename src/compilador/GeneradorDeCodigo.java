@@ -110,7 +110,7 @@ public class GeneradorDeCodigo {
         return memoria[pos];
     }
 
-    public void cargarPOP() {
+    public void cargarPOP_EAX() {
         if (memoria[topeMemoria - 1] == PUSH_EAX_OPCODE) {
             topeMemoria--;
         } else {
