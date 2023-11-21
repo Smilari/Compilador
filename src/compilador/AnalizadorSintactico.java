@@ -415,12 +415,9 @@ public class AnalizadorSintactico {
             expresion(base, desplazamiento);
             Terminal operador = aLexico.getTerminal();
 
-            verificarTerminal(List.of(IGUAL, DISTINTO, MENOR, MENOR_IGUAL, MAYOR, MAYOR_IGUAL), 301);
+            verificarTerminal(List.of(IGUAL_IGUAL, IGUAL, DISTINTO, MENOR, MENOR_IGUAL, MAYOR, MAYOR_IGUAL), 301);
             aLexico.escanear();
-            // Si el terminal fue un IGUAL, verifica si el siguiente es tambien un IGUAL y lo pasa de largo.
-            if(aLexico.compararTerminal(IGUAL)){
-                aLexico.escanear();
-            }
+
             expresion(base, desplazamiento);
 
             gCodigo.cargarPOP();
@@ -429,6 +426,7 @@ public class AnalizadorSintactico {
             gCodigo.cargarByte(CMP_OPCODE2);
             Map<Terminal, Byte> operadoresCodigo = Map.of(
                     IGUAL, (byte) JE_OPCODE,
+                    IGUAL_IGUAL, (byte) JE_OPCODE,
                     DISTINTO, (byte) JNE_OPCODE,
                     MENOR, (byte) JL_OPCODE,
                     MENOR_IGUAL, (byte) JLE_OPCODE,

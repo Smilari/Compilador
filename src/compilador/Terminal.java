@@ -1,6 +1,7 @@
 package compilador;
 
 public enum Terminal {
+        IGUAL_IGUAL,
         ELSE,
         HALT,
         IF,

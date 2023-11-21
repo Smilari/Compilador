@@ -187,9 +187,16 @@ public class AnalizadorLexico {
                     yield PUNTO_Y_COMA;
                 }
                 case '=' -> {
-                    cadena = "=";
                     caracter = lectorLee();
-                    yield IGUAL;
+                    if(caracter == '='){
+                        cadena = "==";
+                        caracter = lectorLee();
+                        yield IGUAL_IGUAL;
+                    } else {
+                        cadena = "=";
+                        caracter = lectorLee();
+                        yield IGUAL;
+                    }
                 }
                 case '\'' -> {
                     StringBuilder builder = new StringBuilder("'");
