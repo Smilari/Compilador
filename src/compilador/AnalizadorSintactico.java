@@ -239,18 +239,25 @@ public class AnalizadorSintactico {
 
                 proposicion(base, desplazamiento);
 
+                // Realiza un JMP en el final del if hacia el final del else (calculado después) para continuar con el ciclo del programa.
+                // Solo llega a este punto, si la condición originalmente del if, es verdadera y se ejecutó.
                 gCodigo.cargarByte(JMP_OPCODE);
                 gCodigo.cargarEntero(0x00); // Fix Up
                 int origenSaltoElse = gCodigo.getTopeMemoria();
 
+                // Si la condición es falsa, este fix up sirve para hacer un JMP justo después de la sentencia del if
+                // Y de esta forma ingresar en el else.
                 int destinoSalto = gCodigo.getTopeMemoria();
                 int distanciaSalto = destinoSalto - origenSalto;
                 gCodigo.cargarEnteroEn(distanciaSalto, origenSalto - 4); // Fix Up
 
+                // Verifica si hay un else.
                 if(aLexico.getTerminal() == ELSE){
                     aLexico.escanear();
                     proposicion(base, desplazamiento);
                 }
+
+                // Fix up para saber donde hacer el JMP y saltearse el else.
                 destinoSalto = gCodigo.getTopeMemoria();
                 distanciaSalto = destinoSalto - origenSaltoElse;
                 gCodigo.cargarEnteroEn(distanciaSalto, origenSaltoElse - 4); // Fix Up
@@ -410,6 +417,7 @@ public class AnalizadorSintactico {
 
             verificarTerminal(List.of(IGUAL, DISTINTO, MENOR, MENOR_IGUAL, MAYOR, MAYOR_IGUAL), 301);
             aLexico.escanear();
+            // Si el terminal fue un IGUAL, verifica si el siguiente es tambien un IGUAL y lo pasa de largo.
             if(aLexico.compararTerminal(IGUAL)){
                 aLexico.escanear();
             }
