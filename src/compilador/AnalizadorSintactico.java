@@ -186,7 +186,7 @@ public class AnalizadorSintactico {
                 }
                 aLexico.escanear();
 
-                verificarTerminal(ASIGNACION, 201);
+                verificarTerminal(List.of(ASIGNACION, IGUAL), 201);
                 aLexico.escanear();
 
                 expresion(base, desplazamiento);
@@ -238,9 +238,23 @@ public class AnalizadorSintactico {
                 aLexico.escanear();
 
                 proposicion(base, desplazamiento);
+
+                gCodigo.cargarByte(JMP_OPCODE);
+                gCodigo.cargarEntero(0x00); // Fix Up
+                int origenSaltoElse = gCodigo.getTopeMemoria();
+
                 int destinoSalto = gCodigo.getTopeMemoria();
                 int distanciaSalto = destinoSalto - origenSalto;
-                gCodigo.cargarEnteroEn(distanciaSalto, origenSalto - 4);// Fix Up
+                gCodigo.cargarEnteroEn(distanciaSalto, origenSalto - 4); // Fix Up
+
+                if(aLexico.getTerminal() == ELSE){
+                    aLexico.escanear();
+                    proposicion(base, desplazamiento);
+                }
+                destinoSalto = gCodigo.getTopeMemoria();
+                distanciaSalto = destinoSalto - origenSaltoElse;
+                gCodigo.cargarEnteroEn(distanciaSalto, origenSaltoElse - 4); // Fix Up
+
                 break;
 
             case WHILE:
@@ -343,6 +357,14 @@ public class AnalizadorSintactico {
                 }
 
                 break;
+
+            case HALT:
+                aLexico.escanear();
+                // Hace un JMP hacia el fin del programa
+                gCodigo.cargarByte(JMP_OPCODE);
+                gCodigo.cargarEntero(0x588 - (gCodigo.getTopeMemoria() + 4)); //Fin del programa
+
+                break;
         }
     }
 
@@ -388,6 +410,9 @@ public class AnalizadorSintactico {
 
             verificarTerminal(List.of(IGUAL, DISTINTO, MENOR, MENOR_IGUAL, MAYOR, MAYOR_IGUAL), 301);
             aLexico.escanear();
+            if(aLexico.compararTerminal(IGUAL)){
+                aLexico.escanear();
+            }
             expresion(base, desplazamiento);
 
             gCodigo.cargarPOP();
