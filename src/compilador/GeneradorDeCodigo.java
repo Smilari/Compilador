@@ -59,6 +59,24 @@ public class GeneradorDeCodigo {
         }
     }
 
+    public void cargarPred() {
+        // Cargar código para PRED
+        cargarByte(SUB_OPCODE);
+        cargarByte(SUB_OPCODE2);
+        cargarEntero(1);
+        cargarPOP();
+        cargarByte(PUSH_EAX_OPCODE);
+    }
+
+    public void cargarSucc() {
+        // Cargar código para SUCC
+        cargarByte(ADD_OPCODE);
+        cargarByte(ADD_OPCODE2);
+        cargarEntero(1);
+        cargarPOP();
+        cargarByte(PUSH_EAX_OPCODE);
+    }
+
     public void cargarEnteroEn(int enteger, int pos) {
         for (int i = 0; i < 4; i++) {
             cargarByteEn(enteger & 0xFF, pos + i);
